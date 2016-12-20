@@ -14,7 +14,8 @@ import numpy as np
 import tensorflow as tf
 from nltk.translate.bleu_score import sentence_bleu
 
-from src import data_utils, seq2seq_model
+import src.data_utils as data_utils
+import src.seq2seq_model as seq2seq_model
 
 tf.app.flags.DEFINE_float("learning_rate", 0.5, "Learning rate.")
 tf.app.flags.DEFINE_float("learning_rate_decay_factor", 0.99,
@@ -52,7 +53,7 @@ FLAGS = tf.app.flags.FLAGS
 
 # We use a number of buckets and pad to the closest one for efficiency.
 # See seq2seq_model.Seq2SeqModel for details of how they work.
-_buckets = [(50, 20)]
+_buckets = [(80, 20)]
 
 
 def read_data(source_path, target_path, max_size=None):
@@ -326,7 +327,7 @@ def self_test():
 
 def test_bleu():
     test_code_path = FLAGS.test_dir + '/test.ids' + str(FLAGS.code_vocab_size) + '.code'
-    test_nl_path = FLAGS.test_dir + '/test.nl'
+    test_nl_path = FLAGS.test_dir + '/test.ids' + str(FLAGS.code_vocab_size) + '.nl'
 
     code_vocab_path = os.path.join(FLAGS.data_dir,
                                    "vocab%d.code" % FLAGS.code_vocab_size)
@@ -349,7 +350,7 @@ def test_bleu():
                         print("  reading data line %d" % counter)
                         sys.stdout.flush()
                     source_ids = [int(x) for x in source.split()]
-                    #target_ids = [int(x) for x in target.split()]
+                    target_ids = [int(x) for x in target.split()]
                     bucket_id = len(_buckets) - 1
                     for i, bucket in enumerate(_buckets):
                         if bucket[0] >= len(source_ids):
@@ -368,10 +369,11 @@ def test_bleu():
                         outputs = outputs[:outputs.index(data_utils.EOS_ID)]
 
                     o = [rev_nl_vocab[output] for output in outputs]
+                    target = [rev_nl_vocab[t] for t in target_ids]
                     result = {"target": target, "output": o}
                     results.append(result)
-                    target = target.strip().split()
-                    score = sentence_bleu(list(target), list(o), weights=(1.0,))
+               #     target = target.strip().split()
+                    score = sentence_bleu([target], o)
                     total_score += score
                     source, target = source_file.readline(), target_file.readline()
         print('BLUE: {:.2f} in {} samples'.format(total_score / counter * 10, counter))
